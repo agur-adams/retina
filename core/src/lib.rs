@@ -48,7 +48,7 @@ pub mod config;
 mod conntrack;
 #[doc(hidden)]
 #[allow(clippy::all)]
-mod dpdk;
+pub mod dpdk;
 // The filter module must be public to be accessible by the filter_gen procedural macro crate.
 // However, module functions should be opaque to users, so documentation is hidden by default.
 #[doc(hidden)]

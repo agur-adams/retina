@@ -1,5 +1,6 @@
 use retina_core::config::load_config;
 use retina_core::subscription::{Connection, connection::Flow};
+use retina_core::dpdk::{rte_get_tsc_hz, rte_rdtsc};
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -8,7 +9,7 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
-use std::time::{Duration};
+use std::time::{Duration}; 
 
 use anyhow::Result;
 use clap::Parser;
@@ -74,6 +75,8 @@ fn main() -> Result<()> {
         }
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
+    let start_time = unsafe { rte_rdtsc() };
+    println!("Retina Start Time: {}\n", start_time);  
     runtime.run();
 
     let mut wtr = file.lock().unwrap();
