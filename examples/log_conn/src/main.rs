@@ -34,6 +34,7 @@ struct ConnRecord {
     proto: usize,
     ts_utc: i64,
     ts_tsc: u64,
+    ts_sec: u64,
     duration: Duration,
     max_inactivity: Duration,
     time_to_second_packet: Duration,
@@ -57,6 +58,7 @@ fn main() -> Result<()> {
                     proto: conn.five_tuple.proto, 
                     ts_utc: conn.ts_utc,
                     ts_tsc: conn.ts_tsc,
+                    ts_sec: conn.ts_sec,
                     duration: conn.duration, 
                     max_inactivity: conn.max_inactivity, 
                     time_to_second_packet: conn.time_to_second_packet, 
@@ -72,8 +74,6 @@ fn main() -> Result<()> {
         }
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
-    //let mut wtr = file.lock().unwrap();
-    //wtr.write_all(b"This is the start time: ").unwrap();
     runtime.run();
 
     let mut wtr = file.lock().unwrap();
