@@ -24,19 +24,26 @@ use crate::conntrack::conn::tcp_conn::reassembly::wrapping_lt;
 use crate::conntrack::conn_id::FiveTuple;
 use crate::conntrack::pdu::{L4Context, L4Pdu};
 use crate::conntrack::ConnTracker;
+use crate::dpdk::{rte_get_tsc_hz, rte_rdtsc};
 use crate::filter::FilterResult;
 use crate::memory::mbuf::Mbuf;
 use crate::protocols::packet::tcp::{ACK, FIN, RST, SYN};
 use crate::protocols::stream::{ConnParser, Session};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
-use serde::ser::{SerializeStruct, Serializer};
-use serde::Serialize;
-
 use std::collections::HashMap;
 use std::fmt;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
+
+use chrono::Utc;
+use serde::ser::{SerializeStruct, Serializer};
+use serde::Serialize;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref TSC_HZ: f64 = unsafe { rte_get_tsc_hz() as f64 };
+}
 
 /// Pure SYN
 const HIST_SYN: u8 = b'S';
@@ -67,6 +74,9 @@ pub struct Connection {
     /// reflect timestamps read from a packet capture in offline analysis.
     // TODO: embed a hardware timestamp in the Mbuf itself.
     pub ts: Instant,
+    pub ts_utc: i64, // To hold the UTC timestamp at first packet observation for serialization.
+    pub ts_tsc: u64, // To hold the raw cycle count at first packet observation for serialization. 
+    pub ts_sec: u64, // To hold the seconds at first packet observation for serialization.
     /// The duration of the connection.
     ///
     /// ## Remarks
@@ -192,6 +202,9 @@ impl Subscribable for Connection {
 pub struct TrackedConnection {
     five_tuple: FiveTuple,
     first_seen_ts: Instant,
+    start_utc: i64,
+    start_tsc: u64, 
+    start_sec: u64,
     second_seen_ts: Instant,
     last_seen_ts: Instant,
     max_inactivity: Duration,
@@ -258,6 +271,9 @@ impl Trackable for TrackedConnection {
         TrackedConnection {
             five_tuple,
             first_seen_ts: now,
+            start_utc: Utc::now().timestamp(),
+            start_tsc: unsafe { rte_rdtsc() },
+            start_sec: (unsafe { rte_rdtsc() } as f64 / *TSC_HZ * 1e9) as u64,
             second_seen_ts: now,
             last_seen_ts: now,
             max_inactivity: Duration::default(),
@@ -298,6 +314,9 @@ impl Trackable for TrackedConnection {
         let conn = Connection {
             five_tuple: self.five_tuple,
             ts: self.first_seen_ts,
+            ts_utc: self.start_utc,
+            ts_tsc: self.start_tsc,
+            ts_sec: self.start_sec,
             duration,
             max_inactivity,
             time_to_second_packet,

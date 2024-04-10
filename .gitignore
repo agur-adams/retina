@@ -1,3 +1,5 @@
+/scripts
+/test_results
 /target
 /log
 /logs
@@ -6,3 +8,4 @@ Cargo.lock
 *.csv
 *.json
 *.jsonl
+*.swp

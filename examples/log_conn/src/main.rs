@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::Connection;
+use retina_core::subscription::{Connection, connection::Flow};
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -8,9 +8,11 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration};
 
 use anyhow::Result;
 use clap::Parser;
+use serde::{Serialize};
 
 // Define command-line arguments.
 #[derive(Parser, Debug)]
@@ -27,6 +29,19 @@ struct Args {
     outfile: PathBuf,
 }
 
+#[derive(Debug, Serialize)]
+struct ConnRecord {
+    proto: usize,
+    ts_utc: i64,
+    ts_tsc: u64,
+    duration: Duration,
+    max_inactivity: Duration,
+    time_to_second_packet: Duration,
+    history: String,
+    orig: Flow,
+    resp: Flow,
+}
+
 #[filter("")]
 fn main() -> Result<()> {
     env_logger::init();
@@ -38,7 +53,18 @@ fn main() -> Result<()> {
     let cnt = AtomicUsize::new(0);
 
     let callback = |conn: Connection| {
-        if let Ok(serialized) = serde_json::to_string(&conn) {
+        let record = ConnRecord { 
+                    proto: conn.five_tuple.proto, 
+                    ts_utc: conn.ts_utc,
+                    ts_tsc: conn.ts_tsc,
+                    duration: conn.duration, 
+                    max_inactivity: conn.max_inactivity, 
+                    time_to_second_packet: conn.time_to_second_packet, 
+                    history: conn.history(), 
+                    orig: conn.orig, 
+                    resp: conn.resp,
+        };
+        if let Ok(serialized) = serde_json::to_string(&record) {
             let mut wtr = file.lock().unwrap();
             wtr.write_all(serialized.as_bytes()).unwrap();
             wtr.write_all(b"\n").unwrap();
@@ -46,6 +72,8 @@ fn main() -> Result<()> {
         }
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
+    //let mut wtr = file.lock().unwrap();
+    //wtr.write_all(b"This is the start time: ").unwrap();
     runtime.run();
 
     let mut wtr = file.lock().unwrap();
