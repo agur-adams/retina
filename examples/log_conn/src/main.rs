@@ -14,6 +14,7 @@ use std::time::{Duration};
 use anyhow::Result;
 use clap::Parser;
 use serde::{Serialize};
+use chrono::Utc;
 
 // Define command-line arguments.
 #[derive(Parser, Debug)]
@@ -30,6 +31,7 @@ struct Args {
     outfile: PathBuf,
 }
 
+// Holds the desired collection data from a connection record.
 #[derive(Debug, Serialize)]
 struct ConnRecord {
     proto: usize,
@@ -42,6 +44,14 @@ struct ConnRecord {
     history: String,
     orig: Flow,
     resp: Flow,
+}
+
+// Holds the start time information for the Retina runtime.
+#[derive(Debug, Serialize)]
+struct StartTime {
+    start_utc: i64,
+    start_tsc: u64,
+    start_sec: u64,
 }
 
 #[filter("")]
@@ -74,14 +84,26 @@ fn main() -> Result<()> {
             cnt.fetch_add(1, Ordering::Relaxed);
         }
     };
-    let mut runtime = Runtime::new(config, filter, callback)?;
-    //let start_time = unsafe { rte_rdtsc() };
-    //println!("Retina Start Time: {}", start_time);  
-    let mut wtr = file.lock().unwrap();
-    wtr.write_all(b"Test...\n").unwrap();  
-    drop(wtr);
-    runtime.run();
 
+    // Configure the Retina runtime.
+    let mut runtime = Runtime::new(config, filter, callback)?;
+    
+    // Capture the start time when the Retina runtime begins.
+    let start_time = StartTime {
+        start_utc: Utc::now().timestamp(), 
+        start_tsc: unsafe { rte_rdtsc() },
+        start_sec: (unsafe { rte_rdtsc() } as f64 / unsafe { rte_get_tsc_hz() as f64 } * 1e9) as u64,
+    };
+    if let Ok(start_serialized) = serde_json::to_string(&start_time) {
+        let mut wtr = file.lock().unwrap();
+        wtr.write_all(start_serialized.as_bytes()).unwrap();
+        wtr.write_all(b"\n").unwrap();
+    };    
+
+    // Launch the Retina runtime.
+    runtime.run();
+    
+    // Writes the buffered input to file and closes the application.
     let mut wtr = file.lock().unwrap();
     wtr.flush()?;
     println!("Done. Logged {:?} connections to {:?}", cnt, &args.outfile);

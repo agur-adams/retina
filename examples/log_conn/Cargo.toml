@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
+chrono = "0.4"
 clap = { version = "3.2.23", features = ["derive"] }
 env_logger = "0.8.4"
 jsonl = "4.0.1"
