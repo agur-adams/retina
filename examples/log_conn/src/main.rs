@@ -75,8 +75,11 @@ fn main() -> Result<()> {
         }
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
-    let start_time = unsafe { rte_rdtsc() };
-    println!("Retina Start Time: {}\n", start_time);  
+    //let start_time = unsafe { rte_rdtsc() };
+    //println!("Retina Start Time: {}", start_time);  
+    let mut wtr = file.lock().unwrap();
+    wtr.write_all(b"Test...\n").unwrap();  
+    drop(wtr);
     runtime.run();
 
     let mut wtr = file.lock().unwrap();
