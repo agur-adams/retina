@@ -34,16 +34,18 @@ struct Args {
 // Holds the desired collection data from a connection record.
 #[derive(Debug, Serialize)]
 struct ConnRecord {
-    proto: usize,
+    //proto: usize,
     ts_utc: i64,
-    ts_tsc: u64,
-    ts_sec: u64,
+    //ts_tsc: u64,
+    //ts_sec: u64,
     duration: Duration,
-    max_inactivity: Duration,
-    time_to_second_packet: Duration,
+    //max_inactivity: Duration,
+    //time_to_second_packet: Duration,
     history: String,
-    orig: Flow,
-    resp: Flow,
+    orig_nb_pkts: u64,
+    orig_nb_bytes: u64,
+    resp_nb_pkts: u64,
+    resp_nb_bytes: u64,
 }
 
 // Holds the start time information for the Retina runtime.
@@ -54,7 +56,7 @@ struct StartTime {
     start_sec: u64,
 }
 
-#[filter("")]
+#[filter("tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -66,16 +68,18 @@ fn main() -> Result<()> {
 
     let callback = |conn: Connection| {
         let record = ConnRecord { 
-                    proto: conn.five_tuple.proto, 
+                    //proto: conn.five_tuple.proto, 
                     ts_utc: conn.ts_utc,
-                    ts_tsc: conn.ts_tsc,
-                    ts_sec: conn.ts_sec,
+                    //ts_tsc: conn.ts_tsc,
+                    //ts_sec: conn.ts_sec,
                     duration: conn.duration, 
-                    max_inactivity: conn.max_inactivity, 
-                    time_to_second_packet: conn.time_to_second_packet, 
+                    //max_inactivity: conn.max_inactivity, 
+                    //time_to_second_packet: conn.time_to_second_packet, 
                     history: conn.history(), 
-                    orig: conn.orig, 
-                    resp: conn.resp,
+                    orig_nb_pkts: conn.orig.nb_pkts,
+                    orig_nb_bytes: conn.orig.nb_bytes,
+                    resp_nb_pkts: conn.resp.nb_pkts,
+                    resp_nb_bytes: conn.resp.nb_bytes,
         };
         if let Ok(serialized) = serde_json::to_string(&record) {
             let mut wtr = file.lock().unwrap();

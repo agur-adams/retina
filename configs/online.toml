@@ -6,7 +6,7 @@ capacity = 8388608
 cache_size = 512
 
 [online]
-duration = 300
+duration = 10
 nb_rxd = 32768
 promiscuous = true
 mtu = 1500
